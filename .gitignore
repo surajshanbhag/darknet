@@ -4,6 +4,8 @@
 *.out
 *.png
 *.jpg
+*.weights
+backup/
 old/
 mnist/
 data/
@@ -15,6 +17,7 @@ convnet/
 decaf/
 submission/
 cfg/
+trial_*/
 darknet
 .fuse*
 

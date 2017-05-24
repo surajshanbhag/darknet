@@ -12,6 +12,7 @@ static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,2
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear)
 {
+    FILE *f;
     list *options = read_data_cfg(datacfg);
     char *train_images = option_find_str(options, "train", "data/train.list");
     char *backup_directory = option_find_str(options, "backup", "/backup/");
@@ -74,6 +75,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     pthread_t load_thread = load_data(args);
     clock_t time;
     int count = 0;
+    clock_t start=clock();
     //while(i*imgs < N*120){
     while(get_current_batch(net) < net.max_batches){
         if(l.random && count++%10 == 0){
@@ -141,8 +143,24 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         avg_loss = avg_loss*.9 + loss*.1;
 
         i = get_current_batch(net);
+        f=fopen("./darknet_status.txt","w");
+        if(f == NULL){
+            printf("Error opening file\n");
+            exit(1);
+        }
+
+        float time=sec(clock()-start);
+        int hour=(int)(time/3600);
+        time-=hour*3600;
+        int mins=abs((int)time/60);
+        time-=mins*60;
+        int secs=time;
         printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", get_current_batch(net), loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
-        if(i%1000==0){
+        printf("time elapsed\t\t:%d : %d : %d \ncurrent batch\t\t:%d \nloss\t\t\t:%f \naverage loss\t\t:%f\ncurrent rate\t\t:%f rate\nprocessing time\t\t:%lf seconds\nimages\t\t\t:%d\n",hour,mins,secs, get_current_batch(net), loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
+        fprintf(f,"time elapsed\t\t:%d : %d : %d \ncurrent batch\t\t:%d \nloss\t\t\t:%f \naverage loss\t\t:%f\ncurrent rate\t\t:%f rate\nprocessing time\t\t:%lf seconds\nimages\t\t\t:%d\n",hour,mins,secs, get_current_batch(net), loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
+        fclose(f);
+        //if(i%1000==0){
+        if(i%100 == 0){
 #ifdef GPU
             if(ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
@@ -150,7 +168,8 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             sprintf(buff, "%s/%s.backup", backup_directory, base);
             save_weights(net, buff);
         }
-        if(i%10000==0 || (i < 1000 && i%100 == 0)){
+        //if(i%1000==0 || (i < 1000 && i%100 == 0)){
+        if(i%100 == 0){
 #ifdef GPU
             if(ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
